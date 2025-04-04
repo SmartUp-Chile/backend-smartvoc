@@ -14,13 +14,16 @@ y este proyecto adhiere a [Semantic Versioning](https://semver.org/spec/v2.0.0.h
 - Rate limiting para la API
 - Configuración de CORS más restrictiva
 - Herramientas de linting (flake8, black) y pre-commit hooks
-- CI/CD con GitHub Actions
-- Documentación con Swagger/OpenAPI
+- ~~CI/CD con GitHub Actions~~
+- ~~Documentación con Swagger/OpenAPI~~
 
 ## [0.3.0] - En desarrollo
 
 ### Añadido
 - Integración continua con GitHub Actions
+- Documentación de la API con OpenAPI/Swagger
+- Reestructuración de endpoints utilizando flask-restx
+- Interfaz web de documentación en /api/docs
 
 ## [0.2.0] - 2025-04-04
 

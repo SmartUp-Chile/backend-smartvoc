@@ -10,6 +10,8 @@ Backend para SmartVOC desarrollado con Flask y SQLAlchemy, configurado con Docke
 - Dockerizado para fácil despliegue
 - Configuración para conexión a Azure SQL
 - Registro automático de solicitudes
+- Documentación interactiva de la API con Swagger/OpenAPI
+- CI/CD con GitHub Actions
 
 ## Requisitos previos
 
@@ -83,11 +85,21 @@ backend-smartvoc/
 
 ## Endpoints disponibles
 
-### Salud del servicio
-- `GET /api/health` - Verifica el estado del servicio
+La API está documentada con Swagger/OpenAPI. Puedes acceder a la documentación interactiva en:
 
-### Prueba de base de datos
-- `GET /api/db-test` - Verifica la conexión a la base de datos
+```
+http://localhost:8000/api/docs
+```
+
+### Principales endpoints
+
+- **Health Check**:
+  - `GET /api/health/` - Verifica el estado del servicio
+
+- **Base de datos**:
+  - `GET /api/db/test` - Verifica la conexión a la base de datos
+
+> Nota: Los endpoints anteriores `/api/health` y `/api/db-test` están mantenidos por compatibilidad, pero serán eliminados en versiones futuras.
 
 ## Base de datos
 

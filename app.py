@@ -1,4 +1,4 @@
-from flask import Flask, jsonify, request
+from flask import Flask, request
 from flask_sqlalchemy import SQLAlchemy
 from config import active_config
 import os
@@ -32,8 +32,8 @@ def create_tables():
 
 @app.before_request
 def log_request():
-    # Registrar la solicitud en la base de datos si no es una solicitud a /static/
-    if not request.path.startswith('/static/'):
+    # Registrar la solicitud en la base de datos si no es una solicitud a /static/ o a la documentación
+    if not request.path.startswith('/static/') and not request.path.startswith('/api/docs'):
         log_entry = RequestLog(
             endpoint=request.path,
             method=request.method
@@ -45,30 +45,22 @@ def log_request():
             db.session.rollback()
             app.logger.error(f"Error al registrar solicitud: {e}")
 
+# Configurar la API con Swagger
+from api import api_bp
+app.register_blueprint(api_bp)
+
+# Mantener los endpoints antiguos para compatibilidad (serán eliminados en versiones futuras)
 @app.route('/api/health', methods=['GET'])
 def health_check():
-    return jsonify({"status": "ok", "message": "El servicio está funcionando correctamente con hot reload activado"})
+    """Endpoint antiguo para compatibilidad. Por favor, use /api/health/ en su lugar."""
+    return {"status": "ok", "message": "El servicio está funcionando correctamente con hot reload activado"}
 
 @app.route('/api/db-test', methods=['GET'])
 def db_test():
-    """Endpoint para probar la conexión a la base de datos."""
-    try:
-        # Intentar ejecutar una consulta simple para verificar la conexión
-        result = db.session.execute('SELECT 1').scalar()
-        
-        # Obtener el número de solicitudes registradas
-        request_count = RequestLog.query.count()
-            
-        return jsonify({
-            "status": "ok",
-            "main_db": "conectada",
-            "request_count": request_count
-        }), 200
-    except Exception as e:
-        return jsonify({
-            "status": "error",
-            "error": str(e)
-        }), 500
+    """Endpoint antiguo para compatibilidad. Por favor, use /api/db/test en su lugar."""
+    from resources.db import DBTestResource
+    resource = DBTestResource()
+    return resource.get()
 
 if __name__ == '__main__':
     # Crear todas las tablas de la base de datos si no existen
