@@ -8,7 +8,7 @@ ENV FLASK_DEBUG=1
 
 WORKDIR /app
 
-# Instalar dependencias del sistema
+# Instalar dependencias básicas del sistema
 RUN apt-get update && apt-get install -y \
     curl \
     gcc \

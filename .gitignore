@@ -46,4 +46,7 @@ instance/
 *.swp
 *.swo
 .DS_Store
-Thumbs.db 
+Thumbs.db
+
+# Enlaces simbólicos
+agente-001 

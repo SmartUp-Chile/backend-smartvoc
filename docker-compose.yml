@@ -18,6 +18,11 @@ services:
       - FLASK_DEBUG=1
       - PYTHONDONTWRITEBYTECODE=1
       - PYTHONUNBUFFERED=1
+      # Variables para la base de datos SQLite (desarrollo)
+      - DATABASE_URL=sqlite:///instance/smartvoc.db
+      # Variables para SQL Server (descomentar cuando sea necesario)
+      # - DATABASE_URL=mssql+pyodbc://username:password@server:1433/database?driver=ODBC+Driver+17+for+SQL+Server
+      # - DB_SMARTVOC_URI=mssql+pyodbc://smartvoc:password@smartvoc.database.windows.net:1433/SmartVOC?driver=ODBC+Driver+17+for+SQL+Server
     command: >
       bash -c "mkdir -p /app/instance &&
                chmod 777 /app/instance &&
