@@ -387,7 +387,12 @@ class SmartVOCResource(Resource):
                         
                         # Formatear fechas
                         if 'createdAt' in conv_dict and conv_dict['createdAt']:
-                            conv_dict['createdAt'] = conv_dict['createdAt'].isoformat()
+                            try:
+                                if hasattr(conv_dict['createdAt'], 'isoformat'):
+                                    conv_dict['createdAt'] = conv_dict['createdAt'].isoformat()
+                            except:
+                                # Si ocurre algún error, dejamos la fecha como está
+                                pass
                             
                         conversations.append(conv_dict)
                     

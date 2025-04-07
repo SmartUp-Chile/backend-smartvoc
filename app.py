@@ -14,9 +14,6 @@ if not os.path.exists('instance'):
 # Inicializar la base de datos
 db = SQLAlchemy(app)
 
-# Importar modelos después de inicializar db
-from models import RequestLog
-
 # Variable para controlar si las tablas ya fueron creadas
 _tables_created = False
 
@@ -32,11 +29,18 @@ def create_tables():
 
 @app.before_request
 def log_request():
+    # Importar RequestLog aquí para evitar importación circular
+    from models import RequestLog
+    
     # Registrar la solicitud en la base de datos si no es una solicitud a /static/ o a la documentación
     if not request.path.startswith('/static/') and not request.path.startswith('/api/docs'):
         log_entry = RequestLog(
             endpoint=request.path,
-            method=request.method
+            method=request.method,
+            status_code=200,  # Se actualizará después con el código de respuesta real
+            response_time=0,  # Se calculará después del procesamiento
+            ip_address=request.remote_addr if request.remote_addr else "unknown",
+            user_agent=request.user_agent.string if request.user_agent else "unknown"
         )
         try:
             db.session.add(log_entry)
@@ -63,6 +67,9 @@ def db_test():
     return resource.get()
 
 if __name__ == '__main__':
+    # Importar modelos para registrarlos con SQLAlchemy
+    from models import RequestLog, SmartVOCClient
+    
     # Crear todas las tablas de la base de datos si no existen
     with app.app_context():
         db.create_all()

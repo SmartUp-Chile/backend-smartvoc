@@ -42,6 +42,14 @@ y este proyecto adhiere a [Semantic Versioning](https://semver.org/spec/v2.0.0.h
 - Estructura de directorios reorganizada
 - Mejora en el manejo de errores y excepciones
 
+### Corregido
+
+- Solución a problema de importación circular entre app.py y models.py
+- Corrección del modelo RequestLog para incluir primary key y parámetros obligatorios
+- Actualización de SmartVOCClient para usar db.Model en lugar de Base
+- Mejora en el manejo de fechas en métodos to_dict() para objetos SQLAlchemy
+- Gestión robusta de errores en las operaciones CRUD de conversaciones
+
 ## [0.2.0] - 2025-04-04
 
 ### Añadido

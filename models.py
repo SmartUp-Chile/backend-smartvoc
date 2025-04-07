@@ -1,22 +1,21 @@
 from flask_sqlalchemy import SQLAlchemy
-from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy import Column, Integer, String, DateTime, Text
 from datetime import datetime
 import json
+from app import db
 
-Base = declarative_base()
-
-class RequestLog(Base):
+class RequestLog(db.Model):
     """Modelo para registrar las solicitudes HTTP."""
     __tablename__ = 'request_logs'
     
-    id = None
-    endpoint = None
-    method = None
-    status_code = None
-    response_time = None
-    ip_address = None
-    user_agent = None
-    created_at = None
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    endpoint = Column(String(100))
+    method = Column(String(10))
+    status_code = Column(Integer)
+    response_time = Column(Integer)
+    ip_address = Column(String(50))
+    user_agent = Column(String(255))
+    created_at = Column(DateTime, default=datetime.utcnow)
     
     def __init__(self, endpoint, method, status_code, response_time, ip_address, user_agent):
         self.endpoint = endpoint
@@ -30,14 +29,14 @@ class RequestLog(Base):
     def __repr__(self):
         return f"<RequestLog {self.endpoint} {self.method} {self.status_code}>"
         
-class SmartVOCClient(Base):
+class SmartVOCClient(db.Model):
     """Modelo para manejar los clientes de SmartVOC."""
     __tablename__ = 'SmartVOCClients'
     
-    clientId = None
-    clientName = None 
-    clientSlug = None
-    createdAt = None
+    clientId = Column(Integer, primary_key=True, autoincrement=True)
+    clientName = Column(String(100), nullable=False, unique=True)
+    clientSlug = Column(String(100), nullable=False)
+    createdAt = Column(DateTime, default=datetime.utcnow)
     
     def __init__(self, clientName, clientSlug):
         self.clientName = clientName
@@ -83,6 +82,11 @@ class SmartVOCConversation:
         
         # Formatear fechas
         if 'createdAt' in result and result['createdAt']:
-            result['createdAt'] = result['createdAt'].isoformat()
+            try:
+                if hasattr(result['createdAt'], 'isoformat'):
+                    result['createdAt'] = result['createdAt'].isoformat()
+            except:
+                # Si ocurre algún error, dejamos la fecha como está
+                pass
             
         return result 
