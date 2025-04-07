@@ -2,11 +2,12 @@ from flask_restx import Resource, fields
 from flask import current_app, request
 from api import api
 from app import db
-from models import SmartVOCClient
+from models import SmartVOCClient, SmartVOCConversation
 from sqlalchemy import text, inspect
 from sqlalchemy.exc import OperationalError, SQLAlchemyError
 import time
 import json
+import uuid
 from datetime import datetime
 
 # Crear un namespace para los recursos de SmartVOC
@@ -24,6 +25,21 @@ client_input_model = api.model('CreateSmartVOCClient', {
     'clientName': fields.String(required=True, description='Nombre del cliente'),
 })
 
+conversation_model = api.model('SmartVOCConversation', {
+    'conversationId': fields.String(required=True, description='ID de la conversación'),
+    'clientId': fields.Integer(required=True, description='ID del cliente'),
+    'conversation': fields.Raw(description='Contenido de la conversación (array de mensajes)'),
+    'metadata': fields.Raw(description='Metadatos de la conversación'),
+    'deepAnalysisStage': fields.String(description='Etapa del análisis profundo'),
+    'gscAnalysisStage': fields.String(description='Etapa del análisis GSC'),
+    'batchCustomName': fields.String(description='Nombre personalizado del lote'),
+    'createdAt': fields.String(description='Fecha de creación'),
+    'deepAnalysisBatchId': fields.String(description='ID del lote de análisis profundo'),
+    'gscAnalysisBatchId': fields.String(description='ID del lote de análisis GSC'),
+    'analysis': fields.Raw(description='Análisis de la conversación'),
+    'autoProcessingStatus': fields.String(description='Estado del procesamiento automático')
+})
+
 error_model = api.model('Error', {
     'error': fields.String(required=True, description='Mensaje de error')
 })
@@ -39,7 +55,8 @@ info_model = api.model('Info', {
 
 operation_model = api.model('Operation', {
     'operation': fields.String(required=True, description='Operación a realizar', 
-                              enum=['get-all-smartvoc-clients', 'create-smartvoc-client']),
+                              enum=['get-all-smartvoc-clients', 'create-smartvoc-client', 
+                                   'smartvoc-conversations']),
     'parameters': fields.Raw(required=False, description='Parámetros adicionales para la operación')
 })
 
@@ -65,6 +82,19 @@ class SmartVOCResource(Resource):
             return self.get_all_smartvoc_clients()
         elif operation == 'create-smartvoc-client':
             return self.create_smartvoc_client(data.get('parameters', {}))
+        elif operation == 'smartvoc-conversations':
+            # Las operaciones CRUD de conversaciones se manejan mediante el método específico
+            method = data.get('method', '').upper()
+            if method == 'GET':
+                return self.get_smartvoc_conversations(data.get('parameters', {}))
+            elif method == 'POST':
+                return self.create_smartvoc_conversation(data.get('parameters', {}))
+            elif method == 'PUT':
+                return self.update_smartvoc_conversation(data.get('parameters', {}))
+            elif method == 'DELETE':
+                return self.delete_smartvoc_conversation(data.get('parameters', {}))
+            else:
+                return {"error": f"Método '{method}' no soportado para operación 'smartvoc-conversations'"}, 400
         else:
             return {"error": f"Operación no soportada: {operation}"}, 400
     
@@ -261,4 +291,375 @@ class SmartVOCResource(Resource):
                 current_app.logger.error(f"Error inesperado: {str(e)}")
                 return {"error": f"Error inesperado: {str(e)}"}, 500
         
-        return {"error": "No se pudo crear el cliente después de múltiples intentos"}, 500 
+        return {"error": "No se pudo crear el cliente después de múltiples intentos"}, 500
+    
+    def get_smartvoc_conversations(self, parameters):
+        """Obtiene conversaciones según los parámetros proporcionados."""
+        client_name = parameters.get("clientName", "")
+        client_id = parameters.get("clientId", "")
+        conversation_id = parameters.get("conversationId", "")
+        batch_custom_name = parameters.get("batchCustomName", "")
+        
+        if not client_name:
+            return {"error": "El parámetro clientName es obligatorio"}, 400
+        
+        max_retries = 3
+        retry_delay = 4
+        
+        for attempt in range(max_retries):
+            try:
+                # Obtener cliente para validar que existe y obtener el clientSlug
+                client = SmartVOCClient.query.filter_by(clientName=client_name).first()
+                if not client:
+                    return {"error": f"No se encontró el cliente '{client_name}'"}, 404
+                
+                # Verificar si la tabla existe
+                table_name = SmartVOCConversation.get_table_name(client.clientSlug)
+                inspector = inspect(db.engine)
+                if not inspector.has_table(table_name):
+                    return {
+                        "message": f"La tabla {table_name} no existe. No hay conversaciones para este cliente.",
+                        "conversations": []
+                    }, 200
+                
+                # Construir la consulta según los parámetros
+                if conversation_id:
+                    # Si se solicita una conversación específica, obtener todos los detalles
+                    query = text(f"SELECT * FROM {table_name} WHERE conversationId = :conversationId")
+                    result = db.session.execute(query, {"conversationId": conversation_id})
+                    conversation = result.fetchone()
+                    
+                    if not conversation:
+                        return {"error": "Conversación no encontrada"}, 404
+                    
+                    # Convertir a diccionario y procesar campos JSON
+                    conversation_dict = SmartVOCConversation.to_dict(conversation)
+                    return conversation_dict, 200
+                    
+                elif client_id:
+                    # Listar conversaciones para un cliente
+                    if batch_custom_name:
+                        query = text(f"""
+                            SELECT 
+                                conversationId,
+                                conversation,
+                                deepAnalysisStage,
+                                gscAnalysisStage,
+                                batchCustomName,
+                                createdAt,
+                                deepAnalysisBatchId,
+                                gscAnalysisBatchId,
+                                autoProcessingStatus
+                            FROM {table_name} 
+                            WHERE clientId = :clientId 
+                            AND batchCustomName = :batchCustomName
+                        """)
+                        result = db.session.execute(query, {
+                            "clientId": client_id, 
+                            "batchCustomName": batch_custom_name
+                        })
+                    else:
+                        query = text(f"""
+                            SELECT 
+                                conversationId,
+                                deepAnalysisStage,
+                                gscAnalysisStage,
+                                batchCustomName,
+                                createdAt,
+                                deepAnalysisBatchId,
+                                gscAnalysisBatchId,
+                                autoProcessingStatus
+                            FROM {table_name} 
+                            WHERE clientId = :clientId
+                        """)
+                        result = db.session.execute(query, {"clientId": client_id})
+                    
+                    # Procesar resultados
+                    conversations = []
+                    for row in result:
+                        # Convertir a diccionario y procesar campos JSON si es necesario
+                        conv_dict = dict(row)
+                        if 'conversation' in conv_dict and conv_dict['conversation']:
+                            try:
+                                conv_dict["conversation"] = json.loads(conv_dict["conversation"])
+                            except (json.JSONDecodeError, TypeError):
+                                conv_dict["conversation"] = []
+                        
+                        # Formatear fechas
+                        if 'createdAt' in conv_dict and conv_dict['createdAt']:
+                            conv_dict['createdAt'] = conv_dict['createdAt'].isoformat()
+                            
+                        conversations.append(conv_dict)
+                    
+                    return conversations, 200
+                else:
+                    return {"error": "Se requiere especificar clientId o conversationId"}, 400
+                
+            except OperationalError as e:
+                if attempt < max_retries - 1:
+                    current_app.logger.error(f"Error de conexión a la base de datos. Reintentando en {retry_delay} segundos...")
+                    time.sleep(retry_delay)
+                else:
+                    current_app.logger.error(f"Número máximo de intentos alcanzado. Error: {str(e)}")
+                    return {"error": "Error de conexión a la base de datos después de múltiples intentos"}, 500
+            except Exception as e:
+                current_app.logger.error(f"Error inesperado: {str(e)}")
+                return {"error": str(e)}, 500
+                
+        return {"error": "No se pudieron recuperar las conversaciones después de múltiples intentos"}, 500
+    
+    def create_smartvoc_conversation(self, parameters):
+        """Crea una nueva conversación para un cliente específico."""
+        client_name = parameters.get("clientName", "")
+        client_id = parameters.get("clientId", "")
+        conversations = parameters.get("conversations") or parameters.get("conversation") or []
+        metadata = parameters.get("metadata", {})
+        deep_analysis_stage = parameters.get("deepAnalysisStage")
+        gsc_analysis_stage = parameters.get("gscAnalysisStage")
+        batch_custom_name = parameters.get("batchCustomName", "")
+        created_at = parameters.get("createdAt")
+        
+        if not client_name or not client_id or not batch_custom_name:
+            return {"error": "Los parámetros clientName, clientId y batchCustomName son obligatorios"}, 400
+        
+        # Generar un ID único para la conversación
+        conversation_id = str(uuid.uuid4())
+        
+        max_retries = 3
+        retry_delay = 4
+        
+        for attempt in range(max_retries):
+            try:
+                # Obtener cliente para validar que existe y obtener el clientSlug
+                client = SmartVOCClient.query.filter_by(clientName=client_name).first()
+                if not client:
+                    return {"error": f"No se encontró el cliente '{client_name}'"}, 404
+                
+                # Verificar si la tabla existe
+                table_name = SmartVOCConversation.get_table_name(client.clientSlug)
+                inspector = inspect(db.engine)
+                if not inspector.has_table(table_name):
+                    return {"error": f"La tabla {table_name} no existe. Primero debe crear el cliente correctamente"}, 400
+                
+                # Establecer la fecha de creación si no se proporciona
+                if not created_at:
+                    created_at = datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S")
+                
+                # Si cada elemento de 'conversations' no tiene 'conversationId', agregarlo
+                if isinstance(conversations, list):
+                    for conv in conversations:
+                        if isinstance(conv, dict):
+                            if "conversation_id" in conv:
+                                conv["conversationId"] = conv["conversation_id"]
+                            elif "conversationId" not in conv:
+                                conv["conversationId"] = str(uuid.uuid4())
+                
+                # Insertar la conversación
+                query = text(f"""
+                    INSERT INTO {table_name} (
+                        conversationId, 
+                        clientId, 
+                        conversation, 
+                        metadata, 
+                        deepAnalysisStage, 
+                        gscAnalysisStage, 
+                        batchCustomName, 
+                        createdAt
+                    )
+                    VALUES (
+                        :conversationId, 
+                        :clientId, 
+                        :conversation, 
+                        :metadata, 
+                        :deepAnalysisStage, 
+                        :gscAnalysisStage, 
+                        :batchCustomName, 
+                        :createdAt
+                    )
+                """)
+                
+                db.session.execute(query, {
+                    "conversationId": conversation_id,
+                    "clientId": client_id,
+                    "conversation": json.dumps(conversations),
+                    "metadata": json.dumps(metadata),
+                    "deepAnalysisStage": deep_analysis_stage,
+                    "gscAnalysisStage": gsc_analysis_stage,
+                    "batchCustomName": batch_custom_name,
+                    "createdAt": created_at
+                })
+                
+                db.session.commit()
+                
+                return {
+                    "message": "Grupo de conversaciones subido exitosamente", 
+                    "conversationId": conversation_id
+                }, 201
+                
+            except SQLAlchemyError as e:
+                db.session.rollback()
+                if attempt < max_retries - 1:
+                    current_app.logger.error(f"Error de SQL: {str(e)}. Reintentando en {retry_delay} segundos...")
+                    time.sleep(retry_delay)
+                else:
+                    current_app.logger.error(f"Número máximo de intentos alcanzado. Error: {str(e)}")
+                    return {"error": f"Error al crear la conversación: {str(e)}"}, 500
+            except Exception as e:
+                db.session.rollback()
+                current_app.logger.error(f"Error inesperado: {str(e)}")
+                return {"error": str(e)}, 500
+                
+        return {"error": "No se pudo crear la conversación después de múltiples intentos"}, 500
+    
+    def update_smartvoc_conversation(self, parameters):
+        """Actualiza una conversación existente."""
+        client_name = parameters.get("clientName", "")
+        conversation_id = parameters.get("conversationId", "")
+        conversation_data = parameters.get("conversation")
+        metadata = parameters.get("metadata")
+        deep_analysis_stage = parameters.get("deepAnalysisStage")
+        gsc_analysis_stage = parameters.get("gscAnalysisStage")
+        batch_custom_name = parameters.get("batchCustomName")
+        analysis = parameters.get("analysis")
+        auto_processing_status = parameters.get("autoProcessingStatus")
+        
+        if not client_name or not conversation_id:
+            return {"error": "Los parámetros clientName y conversationId son obligatorios"}, 400
+        
+        max_retries = 3
+        retry_delay = 4
+        
+        for attempt in range(max_retries):
+            try:
+                # Obtener cliente para validar que existe y obtener el clientSlug
+                client = SmartVOCClient.query.filter_by(clientName=client_name).first()
+                if not client:
+                    return {"error": f"No se encontró el cliente '{client_name}'"}, 404
+                
+                # Verificar si la tabla existe
+                table_name = SmartVOCConversation.get_table_name(client.clientSlug)
+                inspector = inspect(db.engine)
+                if not inspector.has_table(table_name):
+                    return {"error": f"La tabla {table_name} no existe."}, 404
+                
+                # Verificar si la conversación existe
+                check_query = text(f"SELECT COUNT(*) FROM {table_name} WHERE conversationId = :conversationId")
+                result = db.session.execute(check_query, {"conversationId": conversation_id}).scalar()
+                
+                if result == 0:
+                    return {"error": "Conversación no encontrada"}, 404
+                
+                # Construir la consulta de actualización dinámicamente
+                update_parts = []
+                params = {"conversationId": conversation_id}
+                
+                if conversation_data is not None:
+                    update_parts.append("conversation = :conversation")
+                    params["conversation"] = json.dumps(conversation_data)
+                
+                if metadata is not None:
+                    update_parts.append("metadata = :metadata")
+                    params["metadata"] = json.dumps(metadata)
+                
+                if deep_analysis_stage is not None:
+                    update_parts.append("deepAnalysisStage = :deepAnalysisStage")
+                    params["deepAnalysisStage"] = deep_analysis_stage
+                
+                if gsc_analysis_stage is not None:
+                    update_parts.append("gscAnalysisStage = :gscAnalysisStage")
+                    params["gscAnalysisStage"] = gsc_analysis_stage
+                
+                if batch_custom_name is not None:
+                    update_parts.append("batchCustomName = :batchCustomName")
+                    params["batchCustomName"] = batch_custom_name
+                
+                if analysis is not None:
+                    update_parts.append("analysis = :analysis")
+                    params["analysis"] = json.dumps(analysis)
+                
+                if auto_processing_status is not None:
+                    update_parts.append("autoProcessingStatus = :autoProcessingStatus")
+                    params["autoProcessingStatus"] = auto_processing_status
+                
+                if not update_parts:
+                    return {"error": "No se especificaron campos para actualizar"}, 400
+                
+                # Ejecutar la consulta de actualización
+                update_query = text(f"""
+                    UPDATE {table_name}
+                    SET {', '.join(update_parts)}
+                    WHERE conversationId = :conversationId
+                """)
+                
+                db.session.execute(update_query, params)
+                db.session.commit()
+                
+                return {"message": "Conversación actualizada exitosamente"}, 200
+                
+            except SQLAlchemyError as e:
+                db.session.rollback()
+                if attempt < max_retries - 1:
+                    current_app.logger.error(f"Error de SQL: {str(e)}. Reintentando en {retry_delay} segundos...")
+                    time.sleep(retry_delay)
+                else:
+                    current_app.logger.error(f"Número máximo de intentos alcanzado. Error: {str(e)}")
+                    return {"error": f"Error al actualizar la conversación: {str(e)}"}, 500
+            except Exception as e:
+                db.session.rollback()
+                current_app.logger.error(f"Error inesperado: {str(e)}")
+                return {"error": str(e)}, 500
+                
+        return {"error": "No se pudo actualizar la conversación después de múltiples intentos"}, 500
+    
+    def delete_smartvoc_conversation(self, parameters):
+        """Elimina una conversación existente."""
+        client_name = parameters.get("clientName", "")
+        conversation_id = parameters.get("conversationId", "")
+        
+        if not client_name or not conversation_id:
+            return {"error": "Los parámetros clientName y conversationId son obligatorios"}, 400
+        
+        max_retries = 3
+        retry_delay = 4
+        
+        for attempt in range(max_retries):
+            try:
+                # Obtener cliente para validar que existe y obtener el clientSlug
+                client = SmartVOCClient.query.filter_by(clientName=client_name).first()
+                if not client:
+                    return {"error": f"No se encontró el cliente '{client_name}'"}, 404
+                
+                # Verificar si la tabla existe
+                table_name = SmartVOCConversation.get_table_name(client.clientSlug)
+                inspector = inspect(db.engine)
+                if not inspector.has_table(table_name):
+                    return {"error": f"La tabla {table_name} no existe."}, 404
+                
+                # Verificar si la conversación existe
+                check_query = text(f"SELECT COUNT(*) FROM {table_name} WHERE conversationId = :conversationId")
+                result = db.session.execute(check_query, {"conversationId": conversation_id}).scalar()
+                
+                if result == 0:
+                    return {"error": "Conversación no encontrada"}, 404
+                
+                # Ejecutar la eliminación
+                delete_query = text(f"DELETE FROM {table_name} WHERE conversationId = :conversationId")
+                db.session.execute(delete_query, {"conversationId": conversation_id})
+                db.session.commit()
+                
+                return {"message": "Conversación eliminada exitosamente"}, 200
+                
+            except SQLAlchemyError as e:
+                db.session.rollback()
+                if attempt < max_retries - 1:
+                    current_app.logger.error(f"Error de SQL: {str(e)}. Reintentando en {retry_delay} segundos...")
+                    time.sleep(retry_delay)
+                else:
+                    current_app.logger.error(f"Número máximo de intentos alcanzado. Error: {str(e)}")
+                    return {"error": f"Error al eliminar la conversación: {str(e)}"}, 500
+            except Exception as e:
+                db.session.rollback()
+                current_app.logger.error(f"Error inesperado: {str(e)}")
+                return {"error": str(e)}, 500
+                
+        return {"error": "No se pudo eliminar la conversación después de múltiples intentos"}, 500 
