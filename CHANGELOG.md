@@ -24,6 +24,10 @@ y este proyecto adhiere a [Semantic Versioning](https://semver.org/spec/v2.0.0.h
 - Documentación de la API con OpenAPI/Swagger
 - Reestructuración de endpoints utilizando flask-restx
 - Interfaz web de documentación en /api/docs
+- Implementación de endpoint unificado para operaciones de SmartVOC:
+  - Operación `get-all-smartvoc-clients` para listar clientes
+  - Operación `create-smartvoc-client` para crear clientes con sus tablas relacionadas
+- Modelo `SmartVOCClient` para gestionar clientes
 
 ## [0.2.0] - 2025-04-04
 
