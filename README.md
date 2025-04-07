@@ -99,6 +99,14 @@ http://localhost:8000/api/docs
 - **Base de datos**:
   - `GET /api/db/test` - Verifica la conexión a la base de datos
 
+- **SmartVOC** (Todos a través de POST a `/api/smartvoc` con el parámetro `operation`):
+  - `/get-all-smartvoc-clients` - Lista todos los clientes
+  - `/create-smartvoc-client` - Crea un nuevo cliente
+  - `/smartvoc-conversations` - CRUD de conversaciones
+  - `/smartvoc-fields` - CRUD de campos de análisis
+  - `/create-deep-analysis` - Realiza análisis profundo
+  - `/smartvoc-sql-query` - Permite ejecutar consultas SQL directas
+
 > Nota: Los endpoints anteriores `/api/health` y `/api/db-test` están mantenidos por compatibilidad, pero serán eliminados en versiones futuras.
 
 ## Base de datos

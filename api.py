@@ -26,6 +26,7 @@ api = Api(
 # Crear namespaces para organizar los endpoints
 health_ns = api.namespace('health', description='Verificación de estado del servicio')
 db_ns = api.namespace('db', description='Operaciones relacionadas con la base de datos')
+# El namespace smartvoc_ns se define en resources/smartvoc.py
 
 # Definir modelos de respuesta
 health_model = api.model('Health', {
