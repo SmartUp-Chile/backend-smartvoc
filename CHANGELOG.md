@@ -86,20 +86,31 @@ y este proyecto adhiere a [Semantic Versioning](https://semver.org/spec/v2.0.0.h
 
 ## [Unreleased]
 
-### Added
-- Nuevo endpoint `/api/analysis/<conversation_id>` para gestionar análisis de conversaciones
-  - GET: Obtener análisis por ID de conversación
-  - POST: Crear nuevo análisis
-  - PUT: Actualizar análisis existente
-  - DELETE: Eliminar análisis
-- Nuevos métodos para manejo de análisis generativo:
-  - `get_generative_analyses`: Obtiene análisis generativos con filtros
-  - `create_generative_analysis`: Crea nuevos análisis generativos
-  - `update_generative_analysis`: Actualiza análisis existentes
-- Soporte para campos JSON en análisis generativos
-- Manejo automático de creación de tablas para análisis
+### Añadido
+- Nueva estructura modular para la aplicación con separación clara de responsabilidades
+- Implementación de endpoints para análisis de conversaciones:
+  - `GET /api/analysis/<client_name>/<conversation_id>`: Obtener análisis de una conversación
+  - `POST /api/analysis/<client_name>/<conversation_id>`: Crear un nuevo análisis
+  - `PUT /api/analysis/<client_name>/<conversation_id>`: Actualizar un análisis existente
+  - `DELETE /api/analysis/<client_name>/<conversation_id>`: Eliminar un análisis
+  - `GET /api/analysis/<client_name>`: Listar análisis con filtrado
+- Implementación de endpoints para procesamiento por lotes:
+  - `POST /api/batch-analysis/<client_name>`: Iniciar un análisis por lotes
+  - `GET /api/batch-analysis/<batch_id>/status`: Obtener estado de un proceso por lotes
+  - `GET /api/batch-analysis`: Listar todos los procesos por lotes
+- Nuevos servicios en estructura modular:
+  - `AnalysisService`: Gestión de análisis de conversaciones en la base de datos
+  - `OpenAIService`: Integración con Azure OpenAI para análisis de texto
+  - `ConversationController`: Coordinación del proceso de análisis
 
-### Changed
-- Refactorización de métodos principales (GET, POST, PUT) para mejor organización
-- Mejora en el manejo de errores y reintentos
-- Optimización de consultas SQL 
+### Modificado
+- Refactorización completa de la aplicación para resolver problemas de importación circular
+- Simplificación de la estructura de la API utilizando Flask directamente
+- Mejora en la gestión de errores y logging
+- Implementación del modelo con datos separado de la lógica de negocio
+- Reorganización de middlewares para mejor rendimiento
+
+### Corregido
+- Solucionado el problema con RequestLog y la falta de una clave primaria
+- Corregidos los problemas de importación circular entre módulos
+- Mejorado el manejo de errores en las operaciones de base de datos 
