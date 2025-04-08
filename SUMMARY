@@ -1,0 +1,199 @@
+# SmartVOC en agente-001
+
+## Arquitectura del Sistema
+
+1. **API REST** (`agente001app/routes/smartvoc.py`)
+   - Implementa más de 30 endpoints para gestión de clientes, conversaciones, análisis y categorización
+   - Manejo de errores robusto con reintentos automáticos
+   - Validación de parámetros y datos de entrada
+   - Sistema de logging detallado para debugging
+
+2. **Base de Datos**
+   - Conexión dedicada a SQL Server a través de `db_smartvoc`
+   - Manejo de transacciones y rollbacks
+   - Reintentos automáticos en caso de errores de conexión
+   - Validación de existencia de tablas y campos
+
+3. **Integración con Servicios Externos**
+   - Azure OpenAI para análisis de texto
+   - Azure Speech Services para transcripción de audio
+   - Google Drive para almacenamiento de archivos
+   - SmartUp para procesamiento por lotes
+
+## Modelo de Datos
+
+1. **SmartVOCClients**
+   - Almacena información básica de clientes
+   - Campos: clientId, clientName, clientSlug
+   - Índices optimizados para búsquedas frecuentes
+
+2. **ClientDetails__{ClientName}**
+   - Detalles específicos del cliente
+   - Campos: clientWebsite, clientDescription, clientLanguageDialect, etc.
+   - Validación de campos obligatorios
+
+3. **Conversations__{ClientName}**
+   - Almacena conversaciones en formato JSON
+   - Metadatos: conversationId, timestamp, source
+   - Estado de procesamiento y análisis
+   - Validación de IDs y manejo de casos especiales
+
+4. **Fields__{ClientName}**
+   - Gestión de campos y categorías
+   - Estructura jerárquica de campos
+   - Validación de nombres y tipos
+   - Manejo de campos duplicados
+
+5. **GenerativeAnalyses__{ClientName}**
+   - Análisis generativos de conversaciones
+   - Campos JSON para deepAnalysis y gscAnalysis
+   - Seguimiento de estado de procesamiento
+   - Validación de resultados
+
+6. **CopilotFieldCategoryQuote__{ClientName}**
+   - Citas categorizadas de conversaciones
+   - Relaciones con campos y categorías
+   - Metadatos de extracción
+   - Validación de referencias
+
+## Funcionalidades Principales
+
+1. **Gestión de Clientes**
+   - Creación y configuración de clientes
+   - Validación de datos de entrada
+   - Creación automática de tablas asociadas
+   - Manejo de errores y rollbacks
+
+2. **Gestión de Conversaciones**
+   - Almacenamiento y recuperación de conversaciones
+   - Validación de formato y estructura
+   - Manejo de metadatos y timestamps
+   - Procesamiento por lotes con rangos
+
+3. **Análisis Generativo**
+   - Procesamiento por lotes con SmartUp
+   - Análisis profundo de conversaciones
+   - Categorización automática
+   - Seguimiento de progreso y errores
+
+4. **Gestión de Campos y Categorías**
+   - Creación y edición de campos
+   - Agrupación de campos
+   - Validación de nombres y tipos
+   - Manejo de dependencias
+
+5. **Procesamiento de Audio**
+   - Transcripción de audio con Azure
+   - Validación de formatos
+   - Manejo de errores de transcripción
+   - Almacenamiento de resultados
+
+6. **Automatización**
+   - Procesamiento en segundo plano
+   - Generación automática de categorías
+   - Validación de resultados
+   - Notificaciones de estado
+
+## Endpoints REST
+
+1. **Gestión de Clientes**
+   - GET /get-all-smartvoc-clients
+   - POST /create-smartvoc-client
+   - PUT /update-smartvoc-client
+   - DELETE /delete-smartvoc-client
+
+2. **Gestión de Conversaciones**
+   - GET /smartvoc-conversations
+   - POST /smartvoc-conversations
+   - PUT /smartvoc-conversations
+   - DELETE /smartvoc-conversations
+
+3. **Análisis**
+   - POST /analyze-conversation
+   - POST /batch-analyze-conversations
+   - GET /get-analysis-status
+   - GET /get-analysis-results
+
+4. **Gestión de Campos**
+   - GET /get-fields
+   - POST /create-field
+   - PUT /update-field
+   - DELETE /delete-field
+
+## Integraciones
+
+1. **Azure OpenAI**
+   - Análisis de texto y categorización
+   - Procesamiento por lotes
+   - Manejo de errores y reintentos
+   - Validación de resultados
+
+2. **SQL Server**
+   - Almacenamiento de datos
+   - Transacciones y rollbacks
+   - Reintentos automáticos
+   - Validación de esquema
+
+3. **Google Drive**
+   - Almacenamiento de archivos
+   - Gestión de permisos
+   - Validación de tipos
+   - Manejo de errores
+
+## Características Técnicas
+
+1. **Procesamiento Asíncrono**
+   - Tareas en segundo plano
+   - Seguimiento de estado
+   - Manejo de errores
+   - Notificaciones de progreso
+
+2. **Manejo de Errores**
+   - Reintentos automáticos
+   - Rollbacks de transacciones
+   - Logging detallado
+   - Notificaciones de errores
+
+3. **Validación de Datos**
+   - Esquema de datos
+   - Tipos y formatos
+   - Relaciones y dependencias
+   - Casos especiales
+
+4. **Seguridad**
+   - Validación de parámetros
+   - Sanitización de datos
+   - Control de acceso
+   - Logging de operaciones
+
+5. **Monitoreo**
+   - Logging detallado
+   - Estadísticas de procesamiento
+   - Seguimiento de errores
+   - Métricas de rendimiento
+
+## Consideraciones de Implementación
+
+1. **Base de Datos**
+   - Creación automática de tablas
+   - Validación de esquema
+   - Manejo de transacciones
+   - Optimización de consultas
+
+2. **Procesamiento**
+   - Validación de datos
+   - Manejo de errores
+   - Reintentos automáticos
+   - Notificaciones de estado
+
+3. **Integración**
+   - Configuración de servicios
+   - Manejo de errores
+   - Validación de resultados
+   - Monitoreo de estado
+
+4. **Mantenimiento**
+   - Logging detallado
+   - Monitoreo de errores
+   - Optimización de rendimiento
+   - Actualización de esquema 

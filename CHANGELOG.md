@@ -82,4 +82,24 @@ y este proyecto adhiere a [Semantic Versioning](https://semver.org/spec/v2.0.0.h
 
 ### Seguridad
 - Variables de entorno para configuración sensible
-- Archivo `.env.example` para documentar variables sin exponer valores sensibles 
+- Archivo `.env.example` para documentar variables sin exponer valores sensibles
+
+## [Unreleased]
+
+### Added
+- Nuevo endpoint `/api/analysis/<conversation_id>` para gestionar análisis de conversaciones
+  - GET: Obtener análisis por ID de conversación
+  - POST: Crear nuevo análisis
+  - PUT: Actualizar análisis existente
+  - DELETE: Eliminar análisis
+- Nuevos métodos para manejo de análisis generativo:
+  - `get_generative_analyses`: Obtiene análisis generativos con filtros
+  - `create_generative_analysis`: Crea nuevos análisis generativos
+  - `update_generative_analysis`: Actualiza análisis existentes
+- Soporte para campos JSON en análisis generativos
+- Manejo automático de creación de tablas para análisis
+
+### Changed
+- Refactorización de métodos principales (GET, POST, PUT) para mejor organización
+- Mejora en el manejo de errores y reintentos
+- Optimización de consultas SQL 

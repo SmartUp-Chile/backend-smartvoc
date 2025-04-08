@@ -6,216 +6,271 @@ Backend para el proyecto SmartVOC, implementado con Flask y SQLite.
 
 Este proyecto implementa una API RESTful para el sistema SmartVOC de gestión de conversaciones, análisis de texto y generación de insights utilizando IA.
 
-## Características principales
-
-- Desarrollo en Python con Flask
-- Base de datos SQLite para desarrollo
-- Documentación de la API con Swagger/OpenAPI
-- CI/CD con GitHub Actions
-- Endpoints RESTful para operaciones CRUD
-
-## Requisitos
-
-- Python 3.8+
-- Dependencias listadas en requirements.txt
-- SQLite 3
-
-## Instalación
-
-1. Clonar el repositorio:
-
-```bash
-git clone https://github.com/SmartUp-Chile/backend-smartvoc.git
-cd backend-smartvoc
-```
-
-2. Crear y activar un entorno virtual:
-
-```bash
-python -m venv venv
-source venv/bin/activate  # En Windows: venv\Scripts\activate
-```
-
-3. Instalar dependencias:
-
-```bash
-pip install -r requirements.txt
-```
-
-4. Configurar variables de entorno:
-
-```bash
-cp .env.example .env
-# Editar .env con la configuración deseada
-```
-
-## Ejecución
-
-Para ejecutar el servidor en modo desarrollo:
-
-```bash
-flask run
-# o
-python app.py
-```
-
-El servidor estará disponible en http://localhost:8000.
-
-## Documentación de la API
-
-La documentación interactiva de la API está disponible en http://localhost:8000/api/docs
-
-## Estructura del proyecto
+## Estructura del Proyecto
 
 ```
 backend-smartvoc/
-├── app.py              # Punto de entrada de la aplicación
-├── api.py              # Configuración de la API con Swagger
-├── resources/          # Controladores de recursos
-│   ├── __init__.py
-│   ├── health.py       # Endpoint de verificación de salud
-│   ├── db.py           # Endpoint de pruebas de DB
-│   └── smartvoc.py     # Endpoints de SmartVOC
-├── models.py           # Modelos de datos
+├── app.py              # Aplicación principal Flask
+├── api.py              # Configuración de Swagger/OpenAPI
 ├── config.py           # Configuración de la aplicación
-├── requirements.txt    # Dependencias del proyecto
-└── .env                # Variables de entorno (no incluido en el repositorio)
+├── models.py           # Modelos de datos SQLAlchemy
+├── resources/          # Recursos de la API
+│   ├── __init__.py
+│   ├── health.py      # Endpoint de salud
+│   ├── db_test.py     # Prueba de conexión a BD
+│   └── smartvoc.py    # Endpoints de SmartVOC
+├── routes/            # Rutas adicionales
+│   └── smartvoc_routes.py
+├── instance/          # Datos de la aplicación
+├── docs/             # Documentación
+└── tests/            # Pruebas unitarias
 ```
 
-## Configuración de la base de datos
-
-La aplicación utiliza SQLite por defecto. La base de datos se creará automáticamente en la ruta especificada en la configuración.
-
-```python
-# Ejemplo de configuración en .env:
-DATABASE_URI = "sqlite:///database.db"
-```
-
-## Endpoints disponibles
-
-### Health Check
-
-- `GET /api/health/`: Verifica el estado del servicio.
-
-### Database Test
-
-- `GET /api/db/test`: Prueba la conexión con la base de datos.
+## API Endpoints
 
 ### SmartVOC
 
 Todos los endpoints de SmartVOC utilizan el método POST a `/api/smartvoc` con el parámetro `operation`.
 
-#### Operaciones de clientes
+#### Operaciones Disponibles
 
-- `/get-all-smartvoc-clients`: Lista todos los clientes de SmartVOC registrados.
-- `/create-smartvoc-client`: Crea un nuevo cliente SmartVOC con sus tablas relacionadas.
+1. **Gestión de Clientes**
+   - `get-all-smartvoc-clients`: Lista todos los clientes registrados
+   - `create-smartvoc-client`: Crea un nuevo cliente con sus tablas relacionadas
 
-#### Operaciones de conversaciones
+2. **Gestión de Conversaciones**
+   - `smartvoc-conversations`: Operaciones CRUD para conversaciones
+     - GET: Obtener conversaciones con filtros opcionales
+     - POST: Crear nueva conversación
+     - PUT: Actualizar conversación existente
+     - DELETE: Eliminar conversación
 
-- `/smartvoc-conversations`: Gestiona las conversaciones (CRUD)
-  - Método GET: Obtiene conversaciones según parámetros
-  - Método POST: Crea una nueva conversación
-  - Método PUT: Actualiza una conversación existente
-  - Método DELETE: Elimina una conversación
+3. **Detalles del Cliente**
+   - `client-details`: Gestión de información detallada del cliente
+     - GET: Obtener detalles
+     - POST: Crear detalles
+     - PUT: Actualizar detalles
 
-> ⚠️ Nota: Los endpoints directos (GET /api/health, GET /api/db/test) serán removidos en futuras versiones, favoreciendo la estructura unificada.
+4. **Grupos de Campos**
+   - `field-groups`: Gestión de campos y categorías
+     - GET: Obtener grupos
+     - POST: Crear grupo
+     - PUT: Actualizar grupo
 
-## Ejemplos de uso
+5. **Análisis Generativo**
+   - `generative-analysis`: Gestión de análisis generativos
+     - GET: Obtener análisis con filtros
+     - POST: Crear nuevo análisis
+     - PUT: Actualizar análisis existente
 
-### Verificar salud del servicio
+#### Ejemplos de Uso
 
-```bash
-curl -X GET http://localhost:8000/api/health
-```
-
-### Obtener todos los clientes
-
+1. **Listar Clientes**
 ```bash
 curl -X POST http://localhost:8000/api/smartvoc \
-  -H "Content-Type: application/json" \
-  -d '{"operation": "get-all-smartvoc-clients"}'
+-H "Content-Type: application/json" \
+-d '{"operation": "get-all-smartvoc-clients"}'
 ```
 
-### Crear un cliente
-
+2. **Crear Cliente**
 ```bash
 curl -X POST http://localhost:8000/api/smartvoc \
-  -H "Content-Type: application/json" \
-  -d '{
+-H "Content-Type: application/json" \
+-d '{
     "operation": "create-smartvoc-client",
     "parameters": {
-      "clientName": "Cliente Ejemplo"
+        "clientName": "ClienteEjemplo"
     }
-  }'
+}'
 ```
 
-### Obtener conversaciones de un cliente
-
+3. **Gestionar Conversaciones**
 ```bash
+# Obtener conversaciones
 curl -X POST http://localhost:8000/api/smartvoc \
-  -H "Content-Type: application/json" \
-  -d '{
+-H "Content-Type: application/json" \
+-d '{
     "operation": "smartvoc-conversations",
-    "method": "GET",
     "parameters": {
-      "clientName": "Cliente Ejemplo",
-      "clientId": 1
+        "clientName": "ClienteEjemplo",
+        "conversationId": "123"
     }
-  }'
+}'
+
+# Crear conversación
+curl -X POST http://localhost:8000/api/smartvoc \
+-H "Content-Type: application/json" \
+-d '{
+    "operation": "smartvoc-conversations",
+    "parameters": {
+        "clientName": "ClienteEjemplo",
+        "conversation": [...],
+        "metadata": {...}
+    }
+}'
 ```
 
-### Crear una conversación
-
+4. **Análisis Generativo**
 ```bash
+# Obtener análisis
 curl -X POST http://localhost:8000/api/smartvoc \
-  -H "Content-Type: application/json" \
-  -d '{
-    "operation": "smartvoc-conversations",
-    "method": "POST",
+-H "Content-Type: application/json" \
+-d '{
+    "operation": "generative-analysis",
     "parameters": {
-      "clientName": "Cliente Ejemplo",
-      "clientId": 1,
-      "batchCustomName": "Lote de prueba",
-      "conversation": [
-        {
-          "role": "user",
-          "content": "Hola, tengo un problema con mi pedido"
-        },
-        {
-          "role": "agent",
-          "content": "Claro, con gusto le ayudo. ¿Podría proporcionarme el número de su pedido?"
-        }
-      ],
-      "metadata": {
-        "source": "chat",
-        "channel": "web",
-        "priority": "medium"
-      }
+        "clientName": "ClienteEjemplo",
+        "conversationId": "123"
     }
-  }'
+}'
+
+# Crear análisis
+curl -X POST http://localhost:8000/api/smartvoc \
+-H "Content-Type: application/json" \
+-d '{
+    "operation": "generative-analysis",
+    "parameters": {
+        "clientName": "ClienteEjemplo",
+        "conversationId": "123",
+        "deepAnalysis": {...},
+        "gscAnalysis": {...}
+    }
+}'
 ```
+
+## Modelos de Datos
+
+### SmartVOCClient
+- `clientId`: Identificador único del cliente
+- `clientName`: Nombre del cliente
+- `clientSlug`: Identificador URL-friendly
+- `createdAt`: Fecha de creación
+
+### ClientDetails
+- Información detallada del cliente
+- Configuraciones específicas
+- Metadatos del cliente
+
+### FieldGroup
+- Grupos de campos personalizados
+- Categorías y campos generados
+- Configuraciones de análisis
+
+### GenerativeAnalysis
+- Análisis profundo de conversaciones
+- Análisis GSC
+- Metadatos de procesamiento
+
+### SmartVOCConversation
+- Contenido de la conversación
+- Metadatos
+- Estados de análisis
+- IDs de lotes de procesamiento
+
+## Características Principales
+
+1. **Gestión Multi-cliente**
+   - Creación dinámica de tablas por cliente
+   - Aislamiento de datos
+   - Configuraciones personalizadas
+
+2. **Procesamiento de Conversaciones**
+   - Almacenamiento estructurado
+   - Metadatos enriquecidos
+   - Estados de procesamiento
+
+3. **Análisis Generativo**
+   - Análisis profundo
+   - Análisis GSC
+   - Procesamiento por lotes
+
+4. **Seguridad y Validación**
+   - Validación de parámetros
+   - Manejo de errores
+   - Reintentos automáticos
+
+5. **Persistencia de Datos**
+   - Almacenamiento en SQLite
+   - Tablas dinámicas por cliente
+   - Relaciones y constraints
+
+## Configuración
+
+### Variables de Entorno
+```env
+FLASK_APP=app.py
+FLASK_ENV=development
+FLASK_DEBUG=1
+DATABASE_URL=sqlite:///instance/smartvoc.db
+```
+
+### Base de Datos
+- SQLite por defecto
+- Soporte para otros motores SQL
+- Migraciones automáticas
 
 ## Desarrollo
 
-### Agregar nuevos modelos
+### Requisitos
+- Python 3.8+
+- Flask
+- SQLAlchemy
+- Flask-RESTX
 
-1. Definir el modelo en `models.py`
-2. Crear migraciones para actualizar la base de datos
-3. Implementar los endpoints correspondientes en `resources/`
+### Instalación
+```bash
+# Clonar el repositorio
+git clone https://github.com/SmartUp-Chile/backend-smartvoc.git
+cd backend-smartvoc
 
-### Agregar nuevas rutas
+# Crear entorno virtual
+python -m venv venv
+source venv/bin/activate  # En Windows: venv\Scripts\activate
 
-1. Crear un nuevo archivo en `resources/` si es necesario
-2. Implementar las clases de recursos usando flask-restx
-3. Registrar los recursos en `api.py`
+# Instalar dependencias
+pip install -r requirements.txt
+
+# Configurar variables de entorno
+cp .env.example .env
+# Editar .env con tus configuraciones
+
+# Iniciar el servidor
+flask run
+```
+
+### Docker
+```bash
+# Construir la imagen
+docker build -t smartvoc-api .
+
+# Ejecutar el contenedor
+docker run -p 8000:5000 --env-file .env smartvoc-api
+```
+
+## Pruebas
+
+### Ejecutar Pruebas
+```bash
+# Pruebas unitarias
+python -m pytest tests/
+
+# Pruebas con cobertura
+python -m pytest --cov=app tests/
+```
 
 ## Contribución
 
-1. Hacer fork del repositorio
-2. Crear una rama para la nueva funcionalidad
-3. Realizar los cambios y pruebas
-4. Enviar un Pull Request con una descripción clara de los cambios
+1. Fork el repositorio
+2. Crea una rama para tu feature (`git checkout -b feature/AmazingFeature`)
+3. Commit tus cambios (`git commit -m 'Add some AmazingFeature'`)
+4. Push a la rama (`git push origin feature/AmazingFeature`)
+5. Abre un Pull Request
 
 ## Licencia
 
-Este proyecto está bajo la Licencia MIT. Ver el archivo LICENSE para más detalles. 
+Este proyecto está bajo la Licencia MIT. Ver el archivo `LICENSE` para más detalles.
+
+## Contacto
+
+SmartUp Chile - [@SmartUpChile](https://twitter.com/SmartUpChile)
+
+Link del Proyecto: [https://github.com/SmartUp-Chile/backend-smartvoc](https://github.com/SmartUp-Chile/backend-smartvoc) 
