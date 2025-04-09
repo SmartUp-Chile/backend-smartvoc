@@ -6,15 +6,35 @@ from sqlalchemy.exc import SQLAlchemyError
 import json
 import uuid
 from datetime import datetime
+from utils.exceptions import (
+    APIError,
+    ValidationError,
+    ResourceNotFoundError,
+    ResourceAlreadyExistsError,
+    DatabaseError
+)
+from utils.error_handler import log_exception
 
 class SmartVOCService:
     """Servicio para manejar operaciones de SmartVOC."""
     
     @staticmethod
-    def get_clients():
+    def get_clients(params=None):
         """Obtiene todos los clientes de SmartVOC registrados en la base de datos."""
         try:
-            clients = SmartVOCClient.query.all()
+            query = SmartVOCClient.query
+            
+            # Aplicar filtros si se proporcionan
+            if params:
+                if 'clientName' in params:
+                    query = query.filter(SmartVOCClient.clientName.like(f"%{params['clientName']}%"))
+                    
+                # Aplicar paginación
+                limit = params.get('limit', 10)
+                offset = params.get('offset', 0)
+                query = query.limit(limit).offset(offset)
+            
+            clients = query.all()
             
             if not clients:
                 return {
@@ -24,37 +44,46 @@ class SmartVOCService:
             
             clients_dict = [client.to_dict() for client in clients]
             return clients_dict, 200
+        except SQLAlchemyError as e:
+            log_exception(e)
+            raise DatabaseError(
+                message="Error al consultar clientes en la base de datos",
+                details={"original_error": str(e)}
+            )
         except Exception as e:
-            current_app.logger.error(f"Error al obtener clientes: {str(e)}")
-            return {"error": str(e)}, 500
+            log_exception(e)
+            raise APIError(
+                message="Error al obtener clientes",
+                details={"original_error": str(e)}
+            )
     
     @staticmethod
     def create_client(data):
         """Crea un nuevo cliente de SmartVOC con sus tablas relacionadas."""
         # Validar datos
         if not data or not data.get('clientName'):
-            return {"error": "El parámetro clientName es obligatorio"}, 400
+            raise ValidationError(
+                message="El parámetro clientName es obligatorio",
+                details={"missing_fields": ["clientName"]}
+            )
             
         client_name = data.get('clientName')
         # Generar client_slug en formato CamelCase
         client_slug = ''.join(word.capitalize() for word in client_name.split())
-        # Generar client_id único
-        client_id = str(uuid.uuid4())
-        # Generar API key
-        api_key = str(uuid.uuid4())
         
         try:
             # Verificar si ya existe un cliente con ese nombre
-            existing_client = SmartVOCClient.query.filter_by(client_name=client_name).first()
+            existing_client = SmartVOCClient.query.filter_by(clientName=client_name).first()
             if existing_client:
-                return {"error": f"Ya existe un cliente con el nombre '{client_name}'"}, 400
+                raise ResourceAlreadyExistsError(
+                    message=f"Ya existe un cliente con el nombre '{client_name}'",
+                    details={"client_name": client_name}
+                )
             
             # Crear el nuevo cliente
             new_client = SmartVOCClient(
-                client_id=client_id,
-                client_name=client_name,
-                client_slug=client_slug,
-                api_key=api_key
+                clientName=client_name,
+                clientSlug=client_slug
             )
             
             db_session.add(new_client)
@@ -68,14 +97,23 @@ class SmartVOCService:
                 "message": f"Cliente '{client_name}' creado con éxito",
                 "client": new_client.to_dict()
             }, 201
+        except ResourceAlreadyExistsError:
+            db_session.rollback()
+            raise
         except SQLAlchemyError as e:
             db_session.rollback()
-            current_app.logger.error(f"Error de base de datos al crear cliente: {str(e)}")
-            return {"error": f"Error de base de datos: {str(e)}"}, 500
+            log_exception(e)
+            raise DatabaseError(
+                message="Error de base de datos al crear el cliente",
+                details={"original_error": str(e)}
+            )
         except Exception as e:
             db_session.rollback()
-            current_app.logger.error(f"Error inesperado al crear cliente: {str(e)}")
-            return {"error": str(e)}, 500
+            log_exception(e)
+            raise APIError(
+                message="Error inesperado al crear el cliente",
+                details={"original_error": str(e)}
+            )
     
     @staticmethod
     def get_client(client_id=None, client_name=None):
@@ -83,90 +121,133 @@ class SmartVOCService:
         try:
             client = None
             if client_id:
-                client = SmartVOCClient.query.filter_by(client_id=client_id).first()
+                client = SmartVOCClient.query.filter_by(clientId=client_id).first()
             elif client_name:
-                client = SmartVOCClient.query.filter_by(client_name=client_name).first()
+                client = SmartVOCClient.query.filter_by(clientName=client_name).first()
             
             if not client:
-                return {"error": "Cliente no encontrado"}, 404
+                raise ResourceNotFoundError(
+                    message="Cliente no encontrado",
+                    details={
+                        "client_id": client_id,
+                        "client_name": client_name
+                    }
+                )
             
             # Obtener detalles adicionales si existen
-            details = ClientDetails.query.filter_by(client_id=client.client_id).first()
+            details = ClientDetails.query.filter_by(client_id=client.clientId).first()
             
             result = client.to_dict()
             if details:
                 result.update(details.to_dict())
             
             return result, 200
+        except ResourceNotFoundError:
+            raise
+        except SQLAlchemyError as e:
+            log_exception(e)
+            raise DatabaseError(
+                message="Error de base de datos al obtener el cliente",
+                details={"original_error": str(e)}
+            )
         except Exception as e:
-            current_app.logger.error(f"Error al obtener cliente: {str(e)}")
-            return {"error": str(e)}, 500
+            log_exception(e)
+            raise APIError(
+                message="Error inesperado al obtener el cliente",
+                details={"original_error": str(e)}
+            )
     
     @staticmethod
     def update_client(client_id, data):
         """Actualiza los datos de un cliente existente."""
         # Validar datos
         if not data:
-            return {"error": "No se proporcionaron datos para actualizar"}, 400
+            raise ValidationError(
+                message="No se proporcionaron datos para actualizar",
+                details={"missing_fields": ["data"]}
+            )
             
         try:
-            client = SmartVOCClient.query.filter_by(client_id=client_id).first()
+            client = SmartVOCClient.query.filter_by(clientId=client_id).first()
             if not client:
-                return {"error": f"No se encontró un cliente con el ID '{client_id}'"}, 404
+                raise ResourceNotFoundError(
+                    message=f"No se encontró un cliente con el ID '{client_id}'",
+                    details={"client_id": client_id}
+                )
             
             # Actualizar campos del cliente
             if 'clientName' in data:
-                client.client_name = data['clientName']
+                client.clientName = data['clientName']
             
             # Actualizar detalles del cliente si existen
             details = ClientDetails.query.filter_by(client_id=client_id).first()
             
             if details:
                 # Actualizar campos de detalles
-                for key, value in data.items():
-                    if hasattr(details, key.lower()):
-                        setattr(details, key.lower(), value)
+                if 'clientWebsite' in data:
+                    details.client_website = data['clientWebsite']
+                if 'clientDescription' in data:
+                    details.client_description = data['clientDescription']
+                if 'clientLanguageDialect' in data:
+                    details.client_language_dialect = data['clientLanguageDialect']
+                if 'clientKeywords' in data:
+                    details.client_keywords = data['clientKeywords']
             else:
                 # Crear detalles si no existen
                 details = ClientDetails(
                     client_id=client_id,
-                    client_name=client.client_name,
-                    client_slug=client.client_slug
+                    client_name=client.clientName,
+                    client_slug=client.clientSlug
                 )
                 
                 # Establecer campos de detalles
-                for key, value in data.items():
-                    if hasattr(details, key.lower()):
-                        setattr(details, key.lower(), value)
+                if 'clientWebsite' in data:
+                    details.client_website = data['clientWebsite']
+                if 'clientDescription' in data:
+                    details.client_description = data['clientDescription']
+                if 'clientLanguageDialect' in data:
+                    details.client_language_dialect = data['clientLanguageDialect']
+                if 'clientKeywords' in data:
+                    details.client_keywords = data['clientKeywords']
                 
                 db_session.add(details)
             
-            client.updated_at = datetime.utcnow()
             db_session.commit()
             
             return {
-                "message": f"Cliente '{client.client_name}' actualizado con éxito",
+                "message": f"Cliente '{client.clientName}' actualizado con éxito",
                 "client": client.to_dict()
             }, 200
+        except ResourceNotFoundError:
+            raise
         except SQLAlchemyError as e:
             db_session.rollback()
-            current_app.logger.error(f"Error de base de datos al actualizar cliente: {str(e)}")
-            return {"error": f"Error de base de datos: {str(e)}"}, 500
+            log_exception(e)
+            raise DatabaseError(
+                message="Error de base de datos al actualizar el cliente",
+                details={"original_error": str(e)}
+            )
         except Exception as e:
             db_session.rollback()
-            current_app.logger.error(f"Error inesperado al actualizar cliente: {str(e)}")
-            return {"error": str(e)}, 500
+            log_exception(e)
+            raise APIError(
+                message="Error inesperado al actualizar el cliente",
+                details={"original_error": str(e)}
+            )
     
     @staticmethod
     def delete_client(client_id):
         """Elimina un cliente y todas sus tablas asociadas."""
         try:
-            client = SmartVOCClient.query.filter_by(client_id=client_id).first()
+            client = SmartVOCClient.query.filter_by(clientId=client_id).first()
             if not client:
-                return {"error": f"No se encontró un cliente con el ID '{client_id}'"}, 404
+                raise ResourceNotFoundError(
+                    message=f"No se encontró un cliente con el ID '{client_id}'",
+                    details={"client_id": client_id}
+                )
             
-            client_name = client.client_name
-            client_slug = client.client_slug
+            client_name = client.clientName
+            client_slug = client.clientSlug
             
             # Eliminar datos relacionados
             ClientDetails.query.filter_by(client_id=client_id).delete()
@@ -186,14 +267,22 @@ class SmartVOCService:
             db_session.commit()
             
             return {"message": f"Cliente '{client_name}' eliminado con éxito"}, 200
+        except ResourceNotFoundError:
+            raise
         except SQLAlchemyError as e:
             db_session.rollback()
-            current_app.logger.error(f"Error de base de datos al eliminar cliente: {str(e)}")
-            return {"error": f"Error de base de datos: {str(e)}"}, 500
+            log_exception(e)
+            raise DatabaseError(
+                message="Error de base de datos al eliminar el cliente",
+                details={"original_error": str(e)}
+            )
         except Exception as e:
             db_session.rollback()
-            current_app.logger.error(f"Error inesperado al eliminar cliente: {str(e)}")
-            return {"error": str(e)}, 500
+            log_exception(e)
+            raise APIError(
+                message="Error inesperado al eliminar el cliente",
+                details={"original_error": str(e)}
+            )
     
     @staticmethod
     def get_conversations(params):

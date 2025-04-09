@@ -1,5 +1,5 @@
 from flask_sqlalchemy import SQLAlchemy
-from sqlalchemy import Column, Integer, String, DateTime, Text, ForeignKey, JSON, Table, MetaData
+from sqlalchemy import Column, Integer, String, DateTime, Text, ForeignKey, JSON, Table, MetaData, inspect, text
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import relationship
 from datetime import datetime
@@ -41,22 +41,18 @@ class SmartVOCClient(Base):
     """Modelo para manejar los clientes de SmartVOC."""
     __tablename__ = 'smartvoc_clients'
     
-    id = Column(Integer, primary_key=True, autoincrement=True)
-    client_id = Column(String(50), unique=True, nullable=False)
-    client_name = Column(String(100), nullable=False)
-    client_slug = Column(String(100), nullable=False)
-    api_key = Column(String(100), nullable=False)
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    clientId = Column(Integer, primary_key=True, autoincrement=True)
+    clientName = Column(String(100), nullable=False, unique=True)
+    clientSlug = Column(String(100), nullable=False)
+    createdAt = Column(DateTime, default=datetime.utcnow)
     
     def to_dict(self):
         """Convierte el objeto a un diccionario."""
         return {
-            'clientId': self.client_id,
-            'clientName': self.client_name,
-            'clientSlug': self.client_slug,
-            'createdAt': self.created_at.isoformat() if self.created_at else None,
-            'updatedAt': self.updated_at.isoformat() if self.updated_at else None
+            'clientId': self.clientId,
+            'clientName': self.clientName,
+            'clientSlug': self.clientSlug,
+            'createdAt': self.createdAt.isoformat() if self.createdAt else None
         }
 
 class ClientDetails(Base):
@@ -64,7 +60,7 @@ class ClientDetails(Base):
     __tablename__ = 'client_details'
     
     id = Column(Integer, primary_key=True, autoincrement=True)
-    client_id = Column(String(50), ForeignKey('smartvoc_clients.client_id'), nullable=False)
+    client_id = Column(String(50), ForeignKey('smartvoc_clients.clientId'), nullable=False)
     client_name = Column(String(100), nullable=False)
     client_website = Column(String(255))
     client_description = Column(Text)
@@ -104,7 +100,7 @@ class FieldGroup(Base):
     
     id = Column(Integer, primary_key=True, autoincrement=True)
     field_group_id = Column(Integer, nullable=False)
-    client_id = Column(String(50), ForeignKey('smartvoc_clients.client_id'), nullable=False)
+    client_id = Column(String(50), ForeignKey('smartvoc_clients.clientId'), nullable=False)
     field_name = Column(String(100), nullable=False)
     client_name = Column(String(100), nullable=False)
     field_and_categories = Column(JSON)
@@ -139,7 +135,7 @@ class GenerativeAnalysis(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
     status = Column(String(50), default='PROCESSING')  # PROCESSING, COMPLETED, FAILED
     analysis_type = Column(String(50))  # DeepAnalysis, CategoryAssignment
-    client_id = Column(String(50), ForeignKey('smartvoc_clients.client_id'), nullable=False)
+    client_id = Column(String(50), ForeignKey('smartvoc_clients.clientId'), nullable=False)
     
     client = relationship("SmartVOCClient", backref="generative_analyses")
     
@@ -161,7 +157,7 @@ class Analysis(Base):
     
     id = Column(Integer, primary_key=True, autoincrement=True)
     conversation_id = Column(String(100), nullable=False)
-    client_id = Column(String(50), ForeignKey('smartvoc_clients.client_id'), nullable=False)
+    client_id = Column(String(50), ForeignKey('smartvoc_clients.clientId'), nullable=False)
     analysis_type = Column(String(50), nullable=False)  # e.g., 'sentiment', 'intent', 'entities'
     result = Column(JSON, nullable=False)
     created_at = Column(DateTime, default=datetime.utcnow)

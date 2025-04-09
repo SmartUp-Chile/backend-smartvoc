@@ -11,7 +11,7 @@ y este proyecto adhiere a [Semantic Versioning](https://semver.org/spec/v2.0.0.h
 - Estructura más modular con Blueprint de Flask
 - Separación de modelos en archivos individuales
 - Tests unitarios/integración
-- Validación de datos de entrada (marshmallow/pydantic)
+- ~~Validación de datos de entrada (marshmallow/pydantic)~~
 - Rate limiting para la API
 - Configuración de CORS más restrictiva
 - Herramientas de linting (flake8, black) y pre-commit hooks
@@ -21,7 +21,8 @@ y este proyecto adhiere a [Semantic Versioning](https://semver.org/spec/v2.0.0.h
 - Caché de resultados para endpoints frecuentes
 - Sistema completo de autenticación y autorización
 - Migración a PostgreSQL para producción
-- Validación avanzada de datos de entrada
+- ~~Validación avanzada de datos de entrada~~
+- ~~Manejo global de errores y excepciones~~
 
 ## [0.3.0] - En desarrollo
 
@@ -35,12 +36,19 @@ y este proyecto adhiere a [Semantic Versioning](https://semver.org/spec/v2.0.0.h
 - Operaciones para listar clientes y crear clientes con tablas relacionadas
 - Modelo para gestión de clientes SmartVOC
 - CRUD completo para conversaciones de SmartVOC (GET, POST, PUT, DELETE)
+- Sistema centralizado de manejo de errores con jerarquía de excepciones personalizadas
+- Mapeo inteligente de excepciones SQLAlchemy a errores de API estandarizados
+- Logging detallado para facilitar debugging de errores
+- Formato estandarizado para todas las respuestas de error en la API
+- Middleware para capturar todas las excepciones no manejadas
 
 ### Cambiado
 
 - Arquitectura del proyecto refactorizada para mejor escalabilidad
 - Estructura de directorios reorganizada
 - Mejora en el manejo de errores y excepciones
+- Refactorización de validadores para integrarse con el nuevo sistema de excepciones
+- Código más limpio en controladores al usar excepciones en lugar de retornar errores manualmente
 
 ### Corregido
 
@@ -49,6 +57,7 @@ y este proyecto adhiere a [Semantic Versioning](https://semver.org/spec/v2.0.0.h
 - Actualización de SmartVOCClient para usar db.Model en lugar de Base
 - Mejora en el manejo de fechas en métodos to_dict() para objetos SQLAlchemy
 - Gestión robusta de errores en las operaciones CRUD de conversaciones
+- Mejor gestión y reporting de errores de base de datos
 
 ## [0.2.0] - 2025-04-04
 
@@ -105,6 +114,16 @@ y este proyecto adhiere a [Semantic Versioning](https://semver.org/spec/v2.0.0.h
 - Implementación completa de rutas para conversaciones de SmartVOC:
   - `PUT /api/smartvoc/conversations/<conversation_id>`: Actualizar una conversación
   - `DELETE /api/smartvoc/conversations/<conversation_id>`: Eliminar una conversación
+- Sistema de validación de datos basado en Marshmallow:
+  - Esquemas para validación de clientes, conversaciones y análisis
+  - Decoradores para validar automáticamente rutas y parámetros
+  - Mensajes de error personalizados y estandarizados
+  - Validación de tipos, longitudes y reglas de negocio
+- Sistema centralizado de manejo de errores:
+  - Jerarquía de excepciones personalizadas para diferentes tipos de errores
+  - Manejadores globales para capturar y transformar excepciones
+  - Formato consistente de respuestas de error en toda la API
+  - Logging detallado para facilitar debugging
 
 ### Modificado
 - Refactorización completa de la aplicación para resolver problemas de importación circular
@@ -118,6 +137,14 @@ y este proyecto adhiere a [Semantic Versioning](https://semver.org/spec/v2.0.0.h
   - Responsabilidad del código de estado HTTP trasladada a los servicios
   - Eliminación de condicionales y lógica de negocio en rutas
   - Normalización de la estructura de respuestas en todas las rutas
+- Implementación de validación de datos en la capa de rutas:
+  - Las rutas ahora validan automáticamente los datos de entrada
+  - Manejo consistente de errores de validación
+  - Respuestas estandarizadas para errores de usuario
+- Sistema de excepciones personalizadas integrado con SQLAlchemy:
+  - Mapeo inteligente de errores de SQLAlchemy a excepciones de API
+  - Mejor experiencia de usuario al recibir errores de base de datos
+  - Ocultamiento de detalles técnicos en entornos de producción
 
 ### Corregido
 - Solucionado el problema con RequestLog y la falta de una clave primaria

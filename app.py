@@ -11,6 +11,7 @@ from sqlalchemy import inspect
 from db import db_session, Base, init_db, shutdown_session, engine
 from routes import blueprints
 from models import RequestLog, SmartVOCClient
+from utils.error_handler import configure_error_handlers, log_exception
 
 # Configuración de logging
 logging.basicConfig(
@@ -31,6 +32,9 @@ conversation_controller = ConversationController(db_session)
 # Registrar blueprint después de definir los modelos
 for blueprint in blueprints:
     app.register_blueprint(blueprint)
+
+# Configurar el manejador global de errores
+configure_error_handlers(app)
 
 # Crear tablas
 @app.before_first_request
@@ -55,19 +59,19 @@ def log_response(response):
         
         log = RequestLog(
             method=request.method,
-            path=request.path,
-            ip=request.remote_addr,
+            endpoint=request.path,
+            ip_address=request.remote_addr,
             timestamp=request.start_time,
             user_agent=request.user_agent.string,
-            response_status=response.status_code,
-            processing_time=int(processing_time),
+            status_code=response.status_code,
+            response_time=int(processing_time),
             request_data=request_data
         )
         
         db_session.add(log)
         db_session.commit()
     except Exception as e:
-        logger.error(f"Error al registrar la petición: {str(e)}")
+        log_exception(e)
         db_session.rollback()
     
     return response
@@ -75,6 +79,8 @@ def log_response(response):
 # Limpiar sesión al finalizar
 @app.teardown_appcontext
 def shutdown_session_handler(exception=None):
+    if exception:
+        log_exception(exception)
     shutdown_session(exception)
 
 # Rutas básicas
