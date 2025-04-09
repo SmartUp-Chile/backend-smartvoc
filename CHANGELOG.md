@@ -30,6 +30,11 @@ Todos los cambios notables en este proyecto serán documentados en este archivo.
   - Procesamiento eficiente de lotes de análisis con priorización 
   - Manejo inteligente de conversión JSON para compatibilidad con diferentes bases de datos
   - Sistema de monitoreo y seguimiento del estado de procesamiento
+- Documentación completa de la API:
+  - Guía de inicio rápido para nuevos integradores
+  - Ejemplos detallados de todos los endpoints
+  - Secciones sobre paginación, filtrado y manejo de errores
+  - Flujos de trabajo completos para casos de uso comunes
 
 ### Modificado
 - Refactorización de la estructura del proyecto para minimizar importaciones circulares
