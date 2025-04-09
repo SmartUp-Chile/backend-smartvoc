@@ -1,5 +1,5 @@
 from flask import Blueprint, request, jsonify, current_app
-from app import db
+from db import db_session
 from models import SmartVOCClient, ClientDetails, FieldGroup, GenerativeAnalysis, Analysis, DynamicTableManager
 from sqlalchemy import text, inspect
 from sqlalchemy.exc import SQLAlchemyError

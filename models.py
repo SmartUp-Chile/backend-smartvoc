@@ -4,9 +4,22 @@ from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import relationship
 from datetime import datetime
 import json
-from app import db
+from db import Base, db_session
+from flask import current_app
+import logging
 
-Base = declarative_base()
+# Base ya está definida en db.py, no es necesario crear una nueva instancia
+# Base = declarative_base()
+
+# Logger de fallback en caso que current_app no esté disponible
+logger = logging.getLogger(__name__)
+
+def log_error(message):
+    """Función de utilidad para logging"""
+    try:
+        current_app.logger.error(message)
+    except Exception:
+        logger.error(message)
 
 class RequestLog(Base):
     """Modelo para registrar las solicitudes HTTP."""
@@ -233,11 +246,12 @@ class DynamicTableManager:
         
         # Crear la tabla en la base de datos
         try:
-            metadata.create_all(db.engine)
+            engine = db_session.get_bind()
+            metadata.create_all(engine)
             return True
         except Exception as e:
-            db.session.rollback()
-            current_app.logger.error(f"Error al crear la tabla {table_name}: {str(e)}")
+            db_session.rollback()
+            log_error(f"Error al crear la tabla {table_name}: {str(e)}")
             return False
     
     @staticmethod
@@ -261,21 +275,23 @@ class DynamicTableManager:
         
         # Crear la tabla en la base de datos
         try:
-            metadata.create_all(db.engine)
+            engine = db_session.get_bind()
+            metadata.create_all(engine)
             return True
         except Exception as e:
-            db.session.rollback()
-            current_app.logger.error(f"Error al crear la tabla {table_name}: {str(e)}")
+            db_session.rollback()
+            log_error(f"Error al crear la tabla {table_name}: {str(e)}")
             return False
     
     @staticmethod
     def table_exists(table_name):
         """Verifica si una tabla existe en la base de datos."""
         try:
-            inspector = inspect(db.engine)
+            engine = db_session.get_bind()
+            inspector = inspect(engine)
             return inspector.has_table(table_name)
         except Exception as e:
-            current_app.logger.error(f"Error al verificar si la tabla {table_name} existe: {str(e)}")
+            log_error(f"Error al verificar si la tabla {table_name} existe: {str(e)}")
             return False
     
     @staticmethod
@@ -283,12 +299,12 @@ class DynamicTableManager:
         """Ejecuta una consulta SQL directamente."""
         try:
             if params:
-                result = db.session.execute(text(query), params)
+                result = db_session.execute(text(query), params)
             else:
-                result = db.session.execute(text(query))
-            db.session.commit()
+                result = db_session.execute(text(query))
+            db_session.commit()
             return result
         except Exception as e:
-            db.session.rollback()
-            current_app.logger.error(f"Error al ejecutar la consulta: {str(e)}")
+            db_session.rollback()
+            log_error(f"Error al ejecutar la consulta: {str(e)}")
             raise 

@@ -1,7 +1,5 @@
 from flask import Flask, jsonify, request
-from sqlalchemy import create_engine, Column, Integer, String, DateTime, Text
-from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import sessionmaker, scoped_session
+from sqlalchemy import Column, Integer, String, DateTime, Text
 import os
 from datetime import datetime
 import logging
@@ -10,6 +8,9 @@ from utils.analysis_service import AnalysisService
 from utils.openai_service import OpenAIService
 from utils.conversation_controller import ConversationController
 from sqlalchemy import inspect
+from db import db_session, Base, init_db, shutdown_session, engine
+from routes import blueprints
+from models import RequestLog, SmartVOCClient
 
 # Configuración de logging
 logging.basicConfig(
@@ -18,56 +19,23 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-# Configuración de la base de datos
-DATABASE_URI = os.getenv('DATABASE_URI', 'sqlite:///smartvoc.db')
-
 # Inicialización de la aplicación
 app = Flask(__name__)
-app.config['SQLALCHEMY_DATABASE_URI'] = DATABASE_URI
+app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv('DATABASE_URI', 'sqlite:///smartvoc.db')
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-
-# Configuración de SQLAlchemy
-engine = create_engine(DATABASE_URI)
-db_session = scoped_session(sessionmaker(autocommit=False, autoflush=False, bind=engine))
-Base = declarative_base()
-Base.query = db_session.query_property()
 
 # Inicialización de servicios
 analysis_service = AnalysisService(db_session)
 conversation_controller = ConversationController(db_session)
 
-# Definición de modelos
-class RequestLog(Base):
-    __tablename__ = 'request_logs'
-    id = Column(Integer, primary_key=True, autoincrement=True)
-    method = Column(String(10))
-    path = Column(String(255))
-    ip = Column(String(50))
-    timestamp = Column(DateTime, default=datetime.utcnow)
-    user_agent = Column(String(255))
-    response_status = Column(Integer)
-    processing_time = Column(Integer)
-    request_data = Column(Text)
-
-class SmartVOCClient(Base):
-    __tablename__ = 'smartvoc_clients'
-    clientId = Column(Integer, primary_key=True, autoincrement=True)
-    clientName = Column(String(100), nullable=False, unique=True)
-    clientSlug = Column(String(100), nullable=False)
-    createdAt = Column(DateTime, default=datetime.utcnow)
-    
-    def to_dict(self):
-        return {
-            'clientId': self.clientId,
-            'clientName': self.clientName,
-            'clientSlug': self.clientSlug,
-            'createdAt': self.createdAt.isoformat() if self.createdAt else None
-        }
+# Registrar blueprint después de definir los modelos
+for blueprint in blueprints:
+    app.register_blueprint(blueprint)
 
 # Crear tablas
 @app.before_first_request
 def setup_database():
-    Base.metadata.create_all(bind=engine)
+    init_db()
 
 # Middleware para loggear peticiones
 @app.before_request
@@ -106,8 +74,8 @@ def log_response(response):
 
 # Limpiar sesión al finalizar
 @app.teardown_appcontext
-def shutdown_session(exception=None):
-    db_session.remove()
+def shutdown_session_handler(exception=None):
+    shutdown_session(exception)
 
 # Rutas básicas
 @app.route('/api/health', methods=['GET'])
