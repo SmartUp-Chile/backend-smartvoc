@@ -1,16 +1,38 @@
-from flask_restx import Resource
+from flask_restx import Namespace, Resource, fields
+import logging
 
-class HealthResource(Resource):
-    def get(self):
-        """Verifica el estado del servicio."""
-        from api import health_ns as ns, health_model
-        
-        @ns.doc('get_health_status')
-        @ns.response(200, 'Éxito', health_model)
-        def decorated_get():
+# Configuración de logging
+logger = logging.getLogger(__name__)
+
+# Variables globales para el namespace y modelos
+health_ns = None
+health_model = None
+
+def init_health_namespace(api):
+    """Inicializa el namespace de health y sus modelos."""
+    global health_ns, health_model
+    
+    logger.info("Inicializando namespace de Health...")
+    
+    # Crear el modelo de respuesta para health
+    health_model = api.model('Health', {
+        'status': fields.String(description='Estado del servicio', example='running'),
+        'version': fields.String(description='Versión de la API', example='1.0.0'),
+        'timestamp': fields.DateTime(description='Hora actual del servidor')
+    })
+    
+    # Definir la clase del recurso Health
+    class HealthResource(Resource):
+        @health_ns.doc('get_health')
+        @health_ns.response(200, 'Success', health_model)
+        def get(self):
+            """Verifica el estado de salud de la API"""
+            from datetime import datetime
             return {
-                "status": "ok",
-                "message": "El servicio está funcionando correctamente con hot reload activado"
+                'status': 'running',
+                'version': '1.0.0',
+                'timestamp': datetime.now()
             }
-        
-        return decorated_get() 
+    
+    logger.info("Namespace de Health inicializado correctamente")
+    return HealthResource 

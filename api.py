@@ -1,57 +1,58 @@
-from flask import Blueprint
-from flask_restx import Api, Resource, fields
+from flask_restx import Api
+import logging
+from resources.health import health_ns, init_health_namespace
+from resources.db import db_ns, init_db_namespace
+from resources.smartvoc import smartvoc_ns, init_smartvoc_namespace
+from resources.analysis import analysis_ns, init_analysis_namespace
 
-# Crear el Blueprint para la API
-api_bp = Blueprint('api', __name__, url_prefix='/api')
+# Configuración de logging
+logger = logging.getLogger(__name__)
 
 # Inicializar la API
-api = Api(api_bp,
-    title='SmartVOC API',
+api = Api(
     version='1.0',
-    description='API para gestionar conversaciones y análisis de SmartVOC',
-    doc='/docs',
-    authorizations={
-        'apikey': {
-            'type': 'apiKey',
-            'in': 'header',
-            'name': 'X-API-Key'
-        }
-    }
+    title='SmartVOC API',
+    description='API para la gestión de conversaciones y análisis',
+    doc='/api/docs',
+    prefix='/api'
 )
 
-# Crear namespaces
-health_ns = api.namespace('health', description='Operaciones de salud del servicio')
-db_ns = api.namespace('db', description='Operaciones de base de datos')
-smartvoc_ns = api.namespace('smartvoc', description='Operaciones de SmartVOC')
-analysis_ns = api.namespace('analysis', description='Operaciones de análisis de conversaciones')
+# Registrar namespaces
+api.add_namespace(health_ns)
+api.add_namespace(db_ns)
+api.add_namespace(analysis_ns)
 
-# Definir modelos de respuesta
-health_model = api.model('Health', {
-    'status': fields.String(required=True, description='Estado del servicio'),
-    'message': fields.String(required=True, description='Mensaje de estado')
-})
+# Inicializar recursos (ahora la función init_analysis_namespace no necesita el parámetro api)
+init_analysis_namespace()
 
-db_test_model = api.model('DBTest', {
-    'status': fields.String(required=True, description='Estado de la conexión'),
-    'message': fields.String(required=True, description='Mensaje de estado'),
-    'request_count': fields.Integer(description='Número de solicitudes realizadas')
-})
-
-db_error_model = api.model('DBError', {
-    'error': fields.String(required=True, description='Mensaje de error')
-})
-
-# Utilizamos una función de inicialización para registrar recursos
-def init_resources():
-    from resources import register_resources
-    resources = register_resources()
+# Inicializar los namespaces
+def init_api():
+    """
+    Inicializa la API y registra los namespaces
+    """
+    # Inicializa los namespaces
+    resources = {}
     
-    # Inicializar modelos de SmartVOC
-    from resources.smartvoc import init_smartvoc_models
-    init_smartvoc_models(api)
+    # Health namespace
+    resources['HealthResource'] = init_health_namespace()
+    api.add_namespace(health_ns, path='/health')
     
-    # Registrar recursos en los namespaces
-    health_ns.add_resource(resources['HealthResource'], '')
-    db_ns.add_resource(resources['DBTestResource'], '/test')
+    # DB namespace
+    resources['DBResource'] = init_db_namespace()
+    api.add_namespace(db_ns, path='/db')
+    
+    # SmartVOC namespace
+    resources['SmartVOCResource'] = init_smartvoc_namespace()
+    api.add_namespace(smartvoc_ns, path='/smartvoc')
+    
+    # Analysis namespace
+    resources['AnalysisResource'] = init_analysis_namespace()
+    api.add_namespace(analysis_ns, path='/analysis')
+    
+    # Registra los recursos
     smartvoc_ns.add_resource(resources['SmartVOCResource'], '')
-    analysis_ns.add_resource(resources['AnalysisResource'], '/<string:conversation_id>') 
+    health_ns.add_resource(resources['HealthResource'], '')
+    db_ns.add_resource(resources['DBResource'], '/test')
+    analysis_ns.add_resource(resources['AnalysisResource'], '/<string:conversation_id>')
+    
+    return api 

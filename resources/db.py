@@ -1,32 +1,52 @@
-from flask_restx import Resource
+from flask_restx import Namespace, Resource, fields
+import logging
 from app import db
 from models import RequestLog
 
-class DBTestResource(Resource):
-    def get(self):
-        """Prueba la conexión a la base de datos."""
-        from api import db_ns as ns, db_test_model, db_error_model
-        
-        @ns.doc('test_database_connection')
-        @ns.response(200, 'Conexión exitosa', db_test_model)
-        @ns.response(500, 'Error de conexión', db_error_model)
-        def decorated_get():
+# Configuración de logging
+logger = logging.getLogger(__name__)
+
+# Variables globales para el namespace y modelos
+db_ns = None
+db_test_model = None
+
+def init_db_namespace(api):
+    """Inicializa el namespace de DB y sus modelos"""
+    global db_ns, db_test_model
+    
+    logger.info("Inicializando namespace de DB...")
+    
+    # Crear el modelo de respuesta para db test
+    db_test_model = api.model('DBTest', {
+        'status': fields.String(description='Estado de la conexión a la BD', example='success'),
+        'message': fields.String(description='Mensaje con detalles de la prueba'),
+        'tables': fields.List(fields.String, description='Lista de tablas encontradas')
+    })
+    
+    # Definir la clase del recurso DBTest
+    class DBTestResource(Resource):
+        @db_ns.doc('test_db_connection')
+        @db_ns.response(200, 'Success', db_test_model)
+        @db_ns.response(500, 'Error de conexión')
+        def get(self):
+            """Verifica la conexión con la base de datos"""
             try:
-                # Intentar ejecutar una consulta simple para verificar la conexión
-                result = db.session.execute('SELECT 1').scalar()
+                # Ejecutar una consulta simple para listar tablas
+                result = db.engine.execute("SHOW TABLES")
+                tables = [row[0] for row in result]
                 
-                # Obtener el número de solicitudes registradas
-                request_count = RequestLog.query.count()
-                    
                 return {
-                    "status": "ok",
-                    "main_db": "conectada",
-                    "request_count": request_count
-                }, 200
+                    'status': 'success',
+                    'message': 'Conexión a la base de datos exitosa',
+                    'tables': tables
+                }
             except Exception as e:
+                logger.error(f"Error al probar la conexión a la BD: {str(e)}")
                 return {
-                    "status": "error",
-                    "error": str(e)
+                    'status': 'error',
+                    'message': f'Error de conexión: {str(e)}',
+                    'tables': []
                 }, 500
-        
-        return decorated_get() 
+    
+    logger.info("Namespace de DB inicializado correctamente")
+    return DBTestResource 
