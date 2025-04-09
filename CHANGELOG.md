@@ -1,33 +1,63 @@
-# Registro de cambios (Changelog)
+# Registro de cambios
+Todos los cambios notables en este proyecto serán documentados en este archivo.
 
-Todos los cambios notables de este proyecto serán documentados en este archivo.
+## [Unreleased]
 
-El formato está basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.0.0/),
-y este proyecto adhiere a [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+### Añadido
+- Nueva estructura modular para la aplicación con separación clara de responsabilidades
+- Implementación de endpoints para análisis de conversaciones:
+  - `GET /api/analysis/<client_name>/<conversation_id>`: Obtener análisis de una conversación
+  - `POST /api/analysis/<client_name>`: Crear un nuevo análisis
+  - `PUT /api/analysis/<client_name>/<conversation_id>/<analysis_type>`: Actualizar un análisis existente
+  - `DELETE /api/analysis/<client_name>/<conversation_id>/<analysis_type>`: Eliminar un análisis
+- Integración con Flask Blueprint para rutas de análisis más estructuradas
+- Conversión automática entre objetos Python y cadenas JSON para compatibilidad con SQLite
+- Creación dinámica de tablas específicas por cliente para análisis
+- Manejo mejorado de transacciones en las operaciones de base de datos
+- Nuevo servicio `AnalysisService` con métodos completos para CRUD de análisis
+- Sistema de logging detallado para seguimiento de operaciones y depuración
+- Implementación de análisis generativo de conversaciones:
+  - Modelo `GenerativeAnalysis` para almacenar resultados de análisis con campos JSON
+  - Soporte para diferentes tipos de análisis: estándar, sentimiento, intención, entidades
+  - Procesamiento por lotes para análisis múltiples con seguimiento de estado
+  - API para creación, recuperación y actualización de análisis generativos
+  - Validación de esquemas para datos de entrada de análisis
+  - Creación automática de tablas específicas por cliente
+  - Métodos completos para análisis generativo:
+    - `get_generative_analyses`: Consulta de análisis por ID de conversación, ID de lote o tipo
+    - `create_generative_analysis`: Creación de análisis con soporte para campos JSON
+    - `update_generative_analysis`: Actualización flexible de análisis existentes
+  - Procesamiento eficiente de lotes de análisis con priorización 
+  - Manejo inteligente de conversión JSON para compatibilidad con diferentes bases de datos
+  - Sistema de monitoreo y seguimiento del estado de procesamiento
 
-## Por implementar
+### Modificado
+- Refactorización de la estructura del proyecto para minimizar importaciones circulares
+- Simplificación de la estructura de la API utilizando Flask directamente
+- Mejora en la gestión de errores y validación de datos de entrada
+- Manejo optimizado de transacciones SQLAlchemy en operaciones CRUD
+- Patrones mejorados para evitar bloqueos en la base de datos
+- Actualización de dependencias y librerías:
+  - SQLAlchemy text() para consultas dinámicas seguras
+  - UUID para generación de identificadores únicos
+  - Manejo mejorado de fechas con timedelta
+- Refactorización de métodos principales (GET, POST, PUT) para:
+  - Mejorar la organización del código
+  - Separar operaciones lógicas por tipo
+  - Estandarizar manejo de parámetros y respuestas
+  - Optimizar el rendimiento en procesamiento de solicitudes
+  - Mejorar el manejo de errores con mensajes descriptivos
 
-- Optimización de la imagen Docker (Python 3.11/3.12)
-- Estructura más modular con Blueprint de Flask
-- Separación de modelos en archivos individuales
-- Tests unitarios/integración
-- ~~Validación de datos de entrada (marshmallow/pydantic)~~
-- Rate limiting para la API
-- Configuración de CORS más restrictiva
-- Herramientas de linting (flake8, black) y pre-commit hooks
-- ~~CI/CD con GitHub Actions~~
-- ~~Documentación con Swagger/OpenAPI~~
-- Optimización de consultas a la base de datos
-- Caché de resultados para endpoints frecuentes
-- Sistema completo de autenticación y autorización
-- Migración a PostgreSQL para producción
-- ~~Validación avanzada de datos de entrada~~
-- ~~Manejo global de errores y excepciones~~
+### Corregido
+- Solución a error en f-string con llaves vacías en la definición de tablas SQL
+- Corrección del manejo de objetos JSON en SQLite mediante serialización explícita
+- Prevención de errores "transaction in progress" en operaciones de base de datos
+- Manejo adecuado de resultados de consultas con .scalar() en lugar de .fetchone().count
+- Verificación mejorada de la existencia de registros antes de actualizar o eliminar
 
 ## [0.3.0] - En desarrollo
 
 ### Añadido
-
 - Integración continua con GitHub Actions
 - Documentación de la API con OpenAPI/Swagger
 - Reestructuración de endpoints usando `flask-restx`
@@ -43,7 +73,6 @@ y este proyecto adhiere a [Semantic Versioning](https://semver.org/spec/v2.0.0.h
 - Middleware para capturar todas las excepciones no manejadas
 
 ### Cambiado
-
 - Arquitectura del proyecto refactorizada para mejor escalabilidad
 - Estructura de directorios reorganizada
 - Mejora en el manejo de errores y excepciones
@@ -51,7 +80,6 @@ y este proyecto adhiere a [Semantic Versioning](https://semver.org/spec/v2.0.0.h
 - Código más limpio en controladores al usar excepciones en lugar de retornar errores manualmente
 
 ### Corregido
-
 - Solución a problema de importación circular entre app.py y models.py
 - Corrección del modelo RequestLog para incluir primary key y parámetros obligatorios
 - Actualización de SmartVOCClient para usar db.Model en lugar de Base
@@ -91,62 +119,4 @@ y este proyecto adhiere a [Semantic Versioning](https://semver.org/spec/v2.0.0.h
 
 ### Seguridad
 - Variables de entorno para configuración sensible
-- Archivo `.env.example` para documentar variables sin exponer valores sensibles
-
-## [Unreleased]
-
-### Añadido
-- Nueva estructura modular para la aplicación con separación clara de responsabilidades
-- Implementación de endpoints para análisis de conversaciones:
-  - `GET /api/analysis/<client_name>/<conversation_id>`: Obtener análisis de una conversación
-  - `POST /api/analysis/<client_name>/<conversation_id>`: Crear un nuevo análisis
-  - `PUT /api/analysis/<client_name>/<conversation_id>`: Actualizar un análisis existente
-  - `DELETE /api/analysis/<client_name>/<conversation_id>`: Eliminar un análisis
-  - `GET /api/analysis/<client_name>`: Listar análisis con filtrado
-- Implementación de endpoints para procesamiento por lotes:
-  - `POST /api/batch-analysis/<client_name>`: Iniciar un análisis por lotes
-  - `GET /api/batch-analysis/<batch_id>/status`: Obtener estado de un proceso por lotes
-  - `GET /api/batch-analysis`: Listar todos los procesos por lotes
-- Nuevos servicios en estructura modular:
-  - `AnalysisService`: Gestión de análisis de conversaciones en la base de datos
-  - `OpenAIService`: Integración con Azure OpenAI para análisis de texto
-  - `ConversationController`: Coordinación del proceso de análisis
-- Implementación completa de rutas para conversaciones de SmartVOC:
-  - `PUT /api/smartvoc/conversations/<conversation_id>`: Actualizar una conversación
-  - `DELETE /api/smartvoc/conversations/<conversation_id>`: Eliminar una conversación
-- Sistema de validación de datos basado en Marshmallow:
-  - Esquemas para validación de clientes, conversaciones y análisis
-  - Decoradores para validar automáticamente rutas y parámetros
-  - Mensajes de error personalizados y estandarizados
-  - Validación de tipos, longitudes y reglas de negocio
-- Sistema centralizado de manejo de errores:
-  - Jerarquía de excepciones personalizadas para diferentes tipos de errores
-  - Manejadores globales para capturar y transformar excepciones
-  - Formato consistente de respuestas de error en toda la API
-  - Logging detallado para facilitar debugging
-
-### Modificado
-- Refactorización completa de la aplicación para resolver problemas de importación circular
-- Simplificación de la estructura de la API utilizando Flask directamente
-- Mejora en la gestión de errores y logging
-- Implementación del modelo con datos separado de la lógica de negocio
-- Reorganización de middlewares para mejor rendimiento
-- Refactorización del patrón de diseño para todas las rutas de la API:
-  - Separación estricta entre rutas y lógica de negocio
-  - Rutas convertidas en simples delegadores hacia servicios
-  - Responsabilidad del código de estado HTTP trasladada a los servicios
-  - Eliminación de condicionales y lógica de negocio en rutas
-  - Normalización de la estructura de respuestas en todas las rutas
-- Implementación de validación de datos en la capa de rutas:
-  - Las rutas ahora validan automáticamente los datos de entrada
-  - Manejo consistente de errores de validación
-  - Respuestas estandarizadas para errores de usuario
-- Sistema de excepciones personalizadas integrado con SQLAlchemy:
-  - Mapeo inteligente de errores de SQLAlchemy a excepciones de API
-  - Mejor experiencia de usuario al recibir errores de base de datos
-  - Ocultamiento de detalles técnicos en entornos de producción
-
-### Corregido
-- Solucionado el problema con RequestLog y la falta de una clave primaria
-- Corregidos los problemas de importación circular entre módulos
-- Mejorado el manejo de errores en las operaciones de base de datos 
+- Archivo `.env.example` para documentar variables sin exponer valores sensibles 
