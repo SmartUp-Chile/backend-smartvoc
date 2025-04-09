@@ -102,6 +102,9 @@ y este proyecto adhiere a [Semantic Versioning](https://semver.org/spec/v2.0.0.h
   - `AnalysisService`: Gestión de análisis de conversaciones en la base de datos
   - `OpenAIService`: Integración con Azure OpenAI para análisis de texto
   - `ConversationController`: Coordinación del proceso de análisis
+- Implementación completa de rutas para conversaciones de SmartVOC:
+  - `PUT /api/smartvoc/conversations/<conversation_id>`: Actualizar una conversación
+  - `DELETE /api/smartvoc/conversations/<conversation_id>`: Eliminar una conversación
 
 ### Modificado
 - Refactorización completa de la aplicación para resolver problemas de importación circular
@@ -109,6 +112,12 @@ y este proyecto adhiere a [Semantic Versioning](https://semver.org/spec/v2.0.0.h
 - Mejora en la gestión de errores y logging
 - Implementación del modelo con datos separado de la lógica de negocio
 - Reorganización de middlewares para mejor rendimiento
+- Refactorización del patrón de diseño para todas las rutas de la API:
+  - Separación estricta entre rutas y lógica de negocio
+  - Rutas convertidas en simples delegadores hacia servicios
+  - Responsabilidad del código de estado HTTP trasladada a los servicios
+  - Eliminación de condicionales y lógica de negocio en rutas
+  - Normalización de la estructura de respuestas en todas las rutas
 
 ### Corregido
 - Solucionado el problema con RequestLog y la falta de una clave primaria
